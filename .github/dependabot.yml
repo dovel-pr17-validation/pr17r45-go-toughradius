@@ -1,0 +1,76 @@
+# To get started with Dependabot version updates, you'll need to specify which
+# package ecosystems to update and where the package manifests are located.
+# Please see the documentation for all configuration options:
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# Updates are grouped so related dependencies land in a single pull request.
+# This prevents the overlapping / duplicate dependency PRs that otherwise pile
+# up (for example multiple golang.org/x security-library bumps or separate
+# npm / esbuild / Vite PRs) and keeps one clear review path. Major version
+# updates are kept out of the grouped PRs so they can be migrated manually.
+
+version: 2
+updates:
+  - package-ecosystem: "gomod" # See documentation for possible values
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+      gomod-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-eslint-stack:
+        dependency-type: "development"
+        patterns:
+          - "eslint"
+          - "@typescript-eslint/*"
+          - "eslint-plugin-*"
+        update-types:
+          - "minor"
+          - "patch"
+      npm-production:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      npm-development:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # The web app still uses ESLint 8 with legacy .eslintrc.cjs. Keep updates
+      # on the compatible stack until an explicit ESLint 9/10 flat-config
+      # migration updates eslint, @typescript-eslint, plugins, and config
+      # together.
+      - dependency-name: "eslint"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@typescript-eslint/eslint-plugin"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@typescript-eslint/parser"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "eslint-plugin-react-refresh"
+        versions:
+          - ">=0.5.0"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

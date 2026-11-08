@@ -1,0 +1,206 @@
+package domain
+
+import (
+	"time"
+)
+
+// RADIUS related models
+
+// RadiusProfile RADIUS billing profile
+type RadiusProfile struct {
+	ID             int64  `json:"id,string" form:"id"`                      // Primary key ID
+	NodeId         int64  `json:"node_id,string" form:"node_id"`            // Node ID
+	Name           string `json:"name" form:"name"`                         // Profile name
+	Status         string `gorm:"index" json:"status" form:"status"`        // Profile status: 0=disabled 1=enabled
+	AddrPool       string `json:"addr_pool" form:"addr_pool"`               // Address pool
+	ActiveNum      int    `json:"active_num" form:"active_num"`             // Concurrent sessions
+	UpRate         int    `json:"up_rate" form:"up_rate"`                   // Upload rate in Kb
+	DownRate       int    `json:"down_rate" form:"down_rate"`               // Download rate in Kb
+	Domain         string `json:"domain" form:"domain"`                     // Domain, corresponds to NAS device domain attribute, e.g., Huawei domain_code
+	IPv6PrefixPool string `json:"ipv6_prefix_pool" form:"ipv6_prefix_pool"` // IPv6 prefix pool name for NAS-side allocation
+	// DelegatedIpv6PrefixPool names the DHCPv6 Prefix-Delegation pool the NAS uses
+	// to allocate a Delegated-IPv6-Prefix (RFC 6911 Delegated-IPv6-Prefix-Pool,
+	// attribute 171). Per RFC 6911 §2.4 it is distinct from IPv6PrefixPool
+	// (Framed-IPv6-Pool, used for SLAAC) and must not reuse the same value.
+	DelegatedIpv6PrefixPool string `json:"delegated_ipv6_prefix_pool" form:"delegated_ipv6_prefix_pool"`
+	// RadiusClass is the RFC 2865 Class (Type 25) value copied into Access-Accept.
+	// The string is emitted as-is (max 253 octets). ocserv groupconfig expects
+	// "OU=group1;group2". Empty or "NA" means the attribute is omitted.
+	RadiusClass string    `json:"radius_class" form:"radius_class"`
+	BindMac     int       `json:"bind_mac" form:"bind_mac"`   // Bind MAC
+	BindVlan    int       `json:"bind_vlan" form:"bind_vlan"` // Bind VLAN
+	Remark      string    `json:"remark" form:"remark"`       // Remark
+	CreatedAt   time.Time `json:"created_at" form:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" form:"updated_at"`
+}
+
+// TableName Specify table name
+func (RadiusProfile) TableName() string {
+	return "radius_profile"
+}
+
+// RadiusUser RADIUS Authentication account
+type RadiusUser struct {
+	ID             int64  `json:"id,string" form:"id"`                              // Primary key ID
+	NodeId         int64  `json:"node_id,string" form:"node_id"`                    // Node ID
+	ProfileId      int64  `gorm:"index" json:"profile_id,string" form:"profile_id"` // RADIUS profile ID
+	Realname       string `json:"realname" form:"realname"`                         // Contact name
+	Email          string `json:"email" form:"email"`                               // Email address
+	Mobile         string `json:"mobile" form:"mobile"`                             // Contact phone
+	Address        string `json:"address" form:"address"`                           // Contact address
+	Username       string `json:"username" gorm:"uniqueIndex" form:"username"`      // Account name
+	Password       string `json:"password" form:"password"`                         // Password
+	AddrPool       string `json:"addr_pool" form:"addr_pool"`                       // Address pool
+	ActiveNum      int    `gorm:"index" json:"active_num" form:"active_num"`        // Concurrent sessions
+	UpRate         int    `json:"up_rate" form:"up_rate"`                           // Upload rate
+	DownRate       int    `json:"down_rate" form:"down_rate"`                       // Download rate
+	Vlanid1        int    `json:"vlanid1" form:"vlanid1"`                           // VLAN ID 1
+	Vlanid2        int    `json:"vlanid2" form:"vlanid2"`                           // VLAN ID 2
+	IpAddr         string `json:"ip_addr" form:"ip_addr"`                           // Static IP
+	IpV6Addr       string `json:"ipv6_addr" form:"ipv6_addr"`                       // Static IPv6 address
+	MacAddr        string `json:"mac_addr" form:"mac_addr"`                         // MAC address
+	Domain         string `json:"domain" form:"domain"`                             // Domain name for vendor-specific features (e.g., Huawei domain)
+	IPv6PrefixPool string `json:"ipv6_prefix_pool" form:"ipv6_prefix_pool"`         // IPv6 prefix pool name (inherited from profile or user-specific)
+	// DelegatedIpv6Prefix is a static IPv6 prefix delegated to the subscriber via
+	// DHCPv6-PD and issued as the RADIUS Delegated-IPv6-Prefix attribute (RFC 4818,
+	// attribute 123), e.g. "2001:db8:1234::/48". It is per-user because a delegated
+	// prefix routes to a single subscriber; an empty value means "not assigned".
+	DelegatedIpv6Prefix string `json:"delegated_ipv6_prefix" form:"delegated_ipv6_prefix"`
+	// DelegatedIpv6PrefixPool names the DHCPv6 Prefix-Delegation pool the NAS uses
+	// to allocate a Delegated-IPv6-Prefix (RFC 6911 Delegated-IPv6-Prefix-Pool,
+	// attribute 171). An empty value inherits from the linked RadiusProfile in
+	// dynamic link mode; per RFC 6911 §2.4 it is distinct from IPv6PrefixPool.
+	DelegatedIpv6PrefixPool string `json:"delegated_ipv6_prefix_pool" form:"delegated_ipv6_prefix_pool"`
+	// RadiusClass is the RFC 2865 Class (Type 25) value written into Access-Accept.
+	// A non-empty user value overrides the linked profile; empty/"NA" inherits in
+	// dynamic link mode. The string is emitted as-is (max 253 octets).
+	RadiusClass     string `json:"radius_class" form:"radius_class"`
+	BindVlan        int    `json:"bind_vlan" form:"bind_vlan"`                 // Bind VLAN
+	BindMac         int    `json:"bind_mac" form:"bind_mac"`                   // Bind MAC
+	ProfileLinkMode int    `json:"profile_link_mode" form:"profile_link_mode"` // 0=static (snapshot), 1=dynamic (real-time from profile)
+	// ExpireTime is when the account stops being allowed to authenticate.
+	// The zero time, and any year-1 value read back from the database, means
+	// the account never expires. See ExpireTimeUnlimited.
+	ExpireTime  time.Time `gorm:"index" json:"expire_time"`
+	Status      string    `gorm:"index" json:"status" form:"status"` // Status: enabled | disabled
+	Remark      string    `json:"remark" form:"remark"`              // Remark
+	OnlineCount int       `json:"online_count" gorm:"-:migration;<-:false"`
+	LastOnline  time.Time `json:"last_online"`
+	CreatedAt   time.Time `gorm:"index" json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// TableName Specify table name
+func (RadiusUser) TableName() string {
+	return "radius_user"
+}
+
+// ExpireTimeUnlimited reports whether expireTime means the account never expires.
+//
+// A zero [time.Time] is the in-memory sentinel written when an admin clears the
+// expiration field. Databases often read that sentinel back as a year-1 local
+// timestamp, which is not [time.Time.IsZero], so any year before 2 is also
+// unlimited. A normal expiration, including a far-future date such as 2099, is
+// not unlimited.
+func ExpireTimeUnlimited(expireTime time.Time) bool {
+	return expireTime.IsZero() || expireTime.Year() < 2
+}
+
+// RadiusOnline stores active online session state tracked from accounting packets.
+type RadiusOnline struct {
+	ID                  int64     `json:"id,string"` // Primary key ID
+	Username            string    `gorm:"index" json:"username"`
+	NasId               string    `json:"nas_id"`
+	NasAddr             string    `json:"nas_addr"`
+	NasPaddr            string    `json:"nas_paddr"`
+	SessionTimeout      int       `json:"session_timeout"`
+	FramedIpaddr        string    `json:"framed_ipaddr"`
+	FramedNetmask       string    `json:"framed_netmask"`
+	FramedIpv6Prefix    string    `json:"framed_ipv6_prefix"`
+	FramedIpv6Address   string    `json:"framed_ipv6_address"`
+	DelegatedIpv6Prefix string    `json:"delegated_ipv6_prefix"`
+	MacAddr             string    `json:"mac_addr"`
+	NasPort             int64     `json:"nas_port,string"`
+	NasClass            string    `json:"nas_class"`
+	NasPortId           string    `json:"nas_port_id"`
+	NasPortType         int       `json:"nas_port_type"`
+	ServiceType         int       `json:"service_type"`
+	AcctSessionId       string    `gorm:"uniqueIndex:udx_radius_online_acct_session_id" json:"acct_session_id"`
+	AcctSessionTime     int       `json:"acct_session_time"`
+	AcctInputTotal      int64     `json:"acct_input_total,string"`
+	AcctOutputTotal     int64     `json:"acct_output_total,string"`
+	AcctInputPackets    int       `json:"acct_input_packets"`
+	AcctOutputPackets   int       `json:"acct_output_packets"`
+	AcctStartTime       time.Time `gorm:"index" json:"acct_start_time"`
+	LastUpdate          time.Time `json:"last_update"`
+}
+
+// TableName Specify table name
+func (RadiusOnline) TableName() string {
+	return "radius_online"
+}
+
+// RadiusSessionActionAudit records a durable audit trail for operator-triggered
+// dynamic-authorization actions (Disconnect / CoA) on online sessions.
+type RadiusSessionActionAudit struct {
+	ID             int64     `json:"id,string"`
+	SessionID      int64     `gorm:"index" json:"session_id,string"`
+	AcctSessionID  string    `gorm:"index" json:"acct_session_id"`
+	Action         string    `gorm:"index" json:"action"`
+	Username       string    `gorm:"index" json:"username"`
+	NasAddr        string    `gorm:"index" json:"nas_addr"`
+	Target         string    `json:"target"`
+	OperatorID     int64     `gorm:"index" json:"operator_id,string"`
+	OperatorName   string    `gorm:"index" json:"operator_name"`
+	OperatorIP     string    `json:"operator_ip"`
+	Success        bool      `gorm:"index" json:"success"`
+	ResponseCode   string    `json:"response_code"`
+	ErrorCause     int       `json:"error_cause"`
+	ErrorCauseText string    `json:"error_cause_text"`
+	Attempts       int       `json:"attempts"`
+	RTTMillis      int64     `json:"rtt_ms"`
+	TimedOut       bool      `gorm:"index" json:"timed_out"`
+	Error          string    `json:"error"`
+	TriggeredAt    time.Time `gorm:"index" json:"triggered_at"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// TableName specifies the CoA session action audit table name.
+func (RadiusSessionActionAudit) TableName() string {
+	return "radius_session_action_audit"
+}
+
+// RadiusAccounting stores finalized accounting records for session history.
+type RadiusAccounting struct {
+	ID                  int64     `json:"id,string"` // Primary key ID
+	Username            string    `gorm:"index" json:"username"`
+	AcctSessionId       string    `gorm:"index" json:"acct_session_id"`
+	NasId               string    `json:"nas_id"`
+	NasAddr             string    `json:"nas_addr"`
+	NasPaddr            string    `json:"nas_paddr"`
+	SessionTimeout      int       `json:"session_timeout"`
+	FramedIpaddr        string    `json:"framed_ipaddr"`
+	FramedNetmask       string    `json:"framed_netmask"`
+	FramedIpv6Prefix    string    `json:"framed_ipv6_prefix"`
+	FramedIpv6Address   string    `json:"framed_ipv6_address"`
+	DelegatedIpv6Prefix string    `json:"delegated_ipv6_prefix"`
+	MacAddr             string    `json:"mac_addr"`
+	NasPort             int64     `json:"nas_port,string"`
+	NasClass            string    `json:"nas_class"`
+	NasPortId           string    `json:"nas_port_id"`
+	NasPortType         int       `json:"nas_port_type"`
+	ServiceType         int       `json:"service_type"`
+	AcctSessionTime     int       `json:"acct_session_time"`
+	AcctInputTotal      int64     `json:"acct_input_total,string"`
+	AcctOutputTotal     int64     `json:"acct_output_total,string"`
+	AcctInputPackets    int       `json:"acct_input_packets"`
+	AcctOutputPackets   int       `json:"acct_output_packets"`
+	LastUpdate          time.Time `json:"last_update"`
+	AcctStartTime       time.Time `gorm:"index" json:"acct_start_time"`
+	AcctStopTime        time.Time `gorm:"index" json:"acct_stop_time"`
+}
+
+// TableName Specify table name
+func (RadiusAccounting) TableName() string {
+	return "radius_accounting"
+}
